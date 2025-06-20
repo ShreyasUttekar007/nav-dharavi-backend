@@ -5,6 +5,7 @@ const User = require("../models/User");
 const twilio = require("twilio");
 const config = require("../config");
 const bcrypt = require("bcrypt");
+const MediaMessage = require("../models/MediaMessage"); 
 
 const twilioClient = twilio(config.twilio.accountSid, config.twilio.authToken);
 
@@ -164,7 +165,12 @@ router.post("/forgot-password", async (req, res, next) => {
       to: phoneNumber.startsWith("+") ? phoneNumber : `+91${phoneNumber}`,
     });
 
-    res.status(200).json({ message: "A new password has been sent to your registered mobile number." });
+    res
+      .status(200)
+      .json({
+        message:
+          "A new password has been sent to your registered mobile number.",
+      });
   } catch (error) {
     next(error);
   }
@@ -179,6 +185,34 @@ router.get("/users", async (req, res, next) => {
     next(error);
   }
 });
+
+// GET /api/users/:userId
+router.get("/users/:userId", async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: "User not found" });
+    res.status(200).json(user);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get("/by-wa-number/:wa_number", async (req, res, next) => {
+  try {
+    let wa_number = req.params.wa_number;
+    if (!wa_number.startsWith("whatsapp:")) {
+      wa_number = "whatsapp:" + wa_number;
+    }
+    // *** Query the nested field ***
+    const messages = await MediaMessage.find({ "user.wa_number": wa_number }).sort({ timestamp: -1 });
+    res.status(200).json(messages);
+  } catch (error) {
+    next(error);
+  }
+});
+
+
 
 // ✅ UPDATE USER
 router.put("/update-user/:userId", async (req, res, next) => {
