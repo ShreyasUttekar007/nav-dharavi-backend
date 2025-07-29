@@ -2,6 +2,7 @@ const express = require("express");
 const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
 const User = require("../models/User");
+const Digital = require("../models/DigitalContent");
 const twilio = require("twilio");
 const config = require("../config");
 const bcrypt = require("bcrypt");
@@ -40,7 +41,16 @@ router.post("/signup", async (req, res, next) => {
       socialMediaInfluencer,
       socialMediaInfluencerOn,
       referralCode,
+      password, // <-- Accept password from frontend!
     } = req.body;
+
+    if (!password) {
+      return res.status(400).json({ message: "Password is required" });
+    }
+    // Validate password (8+ chars, 1 alpha, 1 num, 1 special)
+    if (!/^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&]).{8,}$/.test(password)) {
+      return res.status(400).json({ message: "Password must be 8+ chars, include letters, numbers and special characters." });
+    }
 
     const existingUser = await User.findOne({ phoneNumber });
     if (existingUser) {
@@ -50,15 +60,14 @@ router.post("/signup", async (req, res, next) => {
     // Auto-generate referral code
     const code = generateReferralCode(phoneNumber);
 
-    const plainPassword = generateRandomPassword(8); // 8 chars
-    const hashedPassword = await bcrypt.hash(plainPassword, 10);
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = new User({
       name,
       phoneNumber,
       age,
       photo,
-      code, // use the generated code
+      code,
       profession,
       residentOfDharavi,
       socialMediaInfluencer,
@@ -69,26 +78,20 @@ router.post("/signup", async (req, res, next) => {
 
     await user.save();
 
-    // Send SMS with the password
-    await twilioClient.messages.create({
-      body: `Welcome to नव धारावी! Your login password is: ${plainPassword}`,
-      from: config.twilio.fromPhone,
-      to: phoneNumber.startsWith("+") ? phoneNumber : `+91${phoneNumber}`,
-    });
-
     const token = jwt.sign({ userId: user._id }, config.jwtSecret, {
       expiresIn: "1d",
     });
 
     res.status(201).json({
-      message: "User created and password sent via SMS",
+      message: "User created successfully.",
       token,
-      code, // send code back if you want to show it to user
+      code,
     });
   } catch (error) {
     next(error);
   }
 });
+
 
 router.post("/login", async (req, res, next) => {
   try {
@@ -262,6 +265,51 @@ router.post("/update-password", async (req, res, next) => {
     next(error);
   }
 });
+
+router.post("/digitalcontent/upload", async (req, res) => {
+  try {
+    const { phoneNumber, photography, reels, shortFilms } = req.body;
+
+    // Always create a new entry (remove unique constraint from schema if needed!)
+    const doc = new Digital({
+      phoneNumber,
+      photography,
+      reels,
+      shortFilms,
+    });
+    await doc.save();
+
+    res.json({ success: true, doc });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// GET all digital content for a phone number
+router.get("/digitalcontent/by-phone/:phoneNumber", async (req, res) => {
+  try {
+    const phoneNumber = req.params.phoneNumber;
+    // Find all documents with the matching phone number
+    const entries = await Digital.find({ phoneNumber }).sort({ createdAt: -1 }); // latest first
+    res.json({ success: true, entries });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Get all digital content entries (no filter)
+router.get("/digitalcontent/all", async (req, res) => {
+  try {
+    const entries = await Digital.find().sort({ createdAt: -1 }); // latest first
+    res.json({ success: true, entries });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 
 // ✅ DELETE USER
 router.delete("/users/:id", async (req, res, next) => {

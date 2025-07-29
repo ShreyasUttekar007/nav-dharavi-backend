@@ -9,6 +9,7 @@ const config = require("./config");
 const authMiddleware = require("./middleware/authMiddleware");
 const errorHandler = require("./middleware/errorHandler");
 const authRoutes = require("./routes/auth");
+const testRoutes = require("./routes/test")
 const cookieParser = require("cookie-parser");
 const session = require("express-session");
 const MongoDBStore = require("connect-mongodb-session")(session);
@@ -72,6 +73,7 @@ app.use(authMiddleware);
 app.use(errorHandler);
 
 app.use("/api/auth", authRoutes);
+app.use("/api/test", testRoutes);
 
 if (process.env.NODE_ENV === "production") {
   app.use(express.static(path.join(__dirname, "client/build")));
