@@ -11,6 +11,11 @@ const DigitalSchema = new Schema(
     photography: { type: String, trim: true },
     reels: { type: String, trim: true },
     shortFilms: { type: String, trim: true },
+    status: {
+      type: String,
+      enum: ["Approved", "Not Approved"],
+      default: "Not Approved",
+    },
   },
   { timestamps: true }
 );

@@ -1,8 +1,6 @@
 const express = require("express");
 const jwt = require("jsonwebtoken");
-const mongoose = require("mongoose");
 const User = require("../models/User");
-const Digital = require("../models/DigitalContent");
 const twilio = require("twilio");
 const config = require("../config");
 const bcrypt = require("bcrypt");
@@ -49,7 +47,12 @@ router.post("/signup", async (req, res, next) => {
     }
     // Validate password (8+ chars, 1 alpha, 1 num, 1 special)
     if (!/^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&]).{8,}$/.test(password)) {
-      return res.status(400).json({ message: "Password must be 8+ chars, include letters, numbers and special characters." });
+      return res
+        .status(400)
+        .json({
+          message:
+            "Password must be 8+ chars, include letters, numbers and special characters.",
+        });
     }
 
     const existingUser = await User.findOne({ phoneNumber });
@@ -92,7 +95,6 @@ router.post("/signup", async (req, res, next) => {
   }
 });
 
-
 router.post("/login", async (req, res, next) => {
   try {
     const { phoneNumber, password } = req.body;
@@ -126,6 +128,7 @@ router.post("/login", async (req, res, next) => {
         age: user.age,
         photo: user.photo,
         code: user.code,
+        role: user.role,
         profession: user.profession,
         residentOfDharavi: user.residentOfDharavi,
         socialMediaInfluencer: user.socialMediaInfluencer,
@@ -265,51 +268,6 @@ router.post("/update-password", async (req, res, next) => {
     next(error);
   }
 });
-
-router.post("/digitalcontent/upload", async (req, res) => {
-  try {
-    const { phoneNumber, photography, reels, shortFilms } = req.body;
-
-    // Always create a new entry (remove unique constraint from schema if needed!)
-    const doc = new Digital({
-      phoneNumber,
-      photography,
-      reels,
-      shortFilms,
-    });
-    await doc.save();
-
-    res.json({ success: true, doc });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-// GET all digital content for a phone number
-router.get("/digitalcontent/by-phone/:phoneNumber", async (req, res) => {
-  try {
-    const phoneNumber = req.params.phoneNumber;
-    // Find all documents with the matching phone number
-    const entries = await Digital.find({ phoneNumber }).sort({ createdAt: -1 }); // latest first
-    res.json({ success: true, entries });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-// Get all digital content entries (no filter)
-router.get("/digitalcontent/all", async (req, res) => {
-  try {
-    const entries = await Digital.find().sort({ createdAt: -1 }); // latest first
-    res.json({ success: true, entries });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
 
 // ✅ DELETE USER
 router.delete("/users/:id", async (req, res, next) => {
