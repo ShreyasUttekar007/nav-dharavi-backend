@@ -59,6 +59,11 @@ const UserSchema = new Schema(
       default: "user",
       enum: ["user", "admin", "moderator"],
     },
+    socialMediaLinks: {
+      type: Map,
+      of: String,
+      default: {},
+    },
   },
   { timestamps: true }
 );

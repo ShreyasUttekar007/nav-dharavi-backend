@@ -4,7 +4,6 @@ const User = require("../models/User");
 const twilio = require("twilio");
 const config = require("../config");
 const bcrypt = require("bcrypt");
-const MediaMessage = require("../models/MediaMessage");
 
 const twilioClient = twilio(config.twilio.accountSid, config.twilio.authToken);
 
@@ -39,6 +38,7 @@ router.post("/signup", async (req, res, next) => {
       socialMediaInfluencer,
       socialMediaInfluencerOn,
       referralCode,
+      socialMediaLinks,
       password, // <-- Accept password from frontend!
     } = req.body;
 
@@ -76,6 +76,7 @@ router.post("/signup", async (req, res, next) => {
       socialMediaInfluencer,
       socialMediaInfluencerOn,
       referralCode,
+      socialMediaLinks,
       password: hashedPassword,
     });
 
@@ -201,25 +202,25 @@ router.get("/users/:userId", async (req, res, next) => {
   }
 });
 
-router.get("/by-wa-number/:wa_number", async (req, res, next) => {
-  try {
-    let wa_number = req.params.wa_number;
-    if (!wa_number.startsWith("whatsapp:")) {
-      // If user supplies only number, add +91 and prefix
-      if (/^\d{10}$/.test(wa_number)) {
-        wa_number = "whatsapp:+91" + wa_number;
-      } else {
-        wa_number = "whatsapp:" + wa_number;
-      }
-    }
-    const messages = await MediaMessage.find({
-      "user.wa_number": wa_number,
-    }).sort({ timestamp: -1 });
-    res.status(200).json(messages);
-  } catch (error) {
-    next(error);
-  }
-});
+// router.get("/by-wa-number/:wa_number", async (req, res, next) => {
+//   try {
+//     let wa_number = req.params.wa_number;
+//     if (!wa_number.startsWith("whatsapp:")) {
+//       // If user supplies only number, add +91 and prefix
+//       if (/^\d{10}$/.test(wa_number)) {
+//         wa_number = "whatsapp:+91" + wa_number;
+//       } else {
+//         wa_number = "whatsapp:" + wa_number;
+//       }
+//     }
+//     const messages = await MediaMessage.find({
+//       "user.wa_number": wa_number,
+//     }).sort({ timestamp: -1 });
+//     res.status(200).json(messages);
+//   } catch (error) {
+//     next(error);
+//   }
+// });
 
 // ✅ UPDATE USER
 router.put("/update-user/:userId", async (req, res, next) => {
