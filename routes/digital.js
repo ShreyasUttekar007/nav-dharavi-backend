@@ -237,8 +237,14 @@ router.put("/digitalcontent/update/:id", async (req, res) => {
   try {
     const { id } = req.params;
     let {
-      photography, reels, shortFilms, status, caption,
-      likeUser, likeAction, comment
+      photography,
+      reels,
+      shortFilms,
+      status,
+      caption,
+      likeUser,
+      likeAction,
+      comment,
     } = req.body;
 
     // 1. Build update objects for both models
@@ -267,22 +273,31 @@ router.put("/digitalcontent/update/:id", async (req, res) => {
     }
 
     // Flags for atomic like/unlike and comment
-    let likeUpdate = null, commentUpdate = null;
+    let likeUpdate = null,
+      commentUpdate = null;
 
-    // Like/unlike logic
-    if (likeUser && typeof likeUser === "string" && (likeAction === "like" || likeAction === "unlike")) {
-      likeUpdate = likeAction === "like"
-        ? { $addToSet: { likes: likeUser } }
-        : { $pull: { likes: likeUser } };
+    if (
+      likeUser &&
+      typeof likeUser === "string" &&
+      (likeAction === "like" || likeAction === "unlike")
+    ) {
+      likeUpdate =
+        likeAction === "like"
+          ? { $addToSet: { likes: likeUser } }
+          : { $pull: { likes: likeUser } };
     }
-
-    // Comment logic
-    if (comment && typeof comment === "object" && comment.name && comment.text) {
+    if (
+      comment &&
+      typeof comment === "object" &&
+      comment.name &&
+      comment.text
+    ) {
       commentUpdate = { $push: { comments: comment } };
     }
 
-    // If any normal field to update, do that first
-    let updatedDoc;
+    // Update Digital first
+    let updatedDoc = null;
+    // Normal fields
     if (Object.keys(digitalUpdate).length) {
       updatedDoc = await Digital.findByIdAndUpdate(
         id,
@@ -290,34 +305,69 @@ router.put("/digitalcontent/update/:id", async (req, res) => {
         { new: true }
       );
     }
-
-    // If like/unlike, do atomic update
+    // Like/unlike
     if (likeUpdate) {
-      updatedDoc = await Digital.findByIdAndUpdate(
-        id,
-        likeUpdate,
-        { new: true }
-      );
+      updatedDoc = await Digital.findByIdAndUpdate(id, likeUpdate, {
+        new: true,
+      });
     }
-
-    // If comment, do atomic push
+    // Comment
     if (commentUpdate) {
-      updatedDoc = await Digital.findByIdAndUpdate(
-        id,
-        commentUpdate,
-        { new: true }
-      );
+      updatedDoc = await Digital.findByIdAndUpdate(id, commentUpdate, {
+        new: true,
+      });
     }
 
-    // If not found in Digital, try Entry (for WhatsApp uploads)
+    // If not found in Digital, try Entry model
     if (!updatedDoc) {
-      // ...Repeat similar update logic for Entry schema if needed...
-      // Skipping for brevity (let me know if you want Entry updates too!)
-      return res.status(404).json({ success: false, message: "Entry not found" });
+      let entryLikeUpdate = null,
+        entryCommentUpdate = null;
+      // Map like/comment for Entry fields if structure is different
+      if (
+        likeUser &&
+        typeof likeUser === "string" &&
+        (likeAction === "like" || likeAction === "unlike")
+      ) {
+        entryLikeUpdate =
+          likeAction === "like"
+            ? { $addToSet: { likes: likeUser } }
+            : { $pull: { likes: likeUser } };
+      }
+      if (
+        comment &&
+        typeof comment === "object" &&
+        comment.name &&
+        comment.text
+      ) {
+        entryCommentUpdate = { $push: { comments: comment } };
+      }
+
+      // Normal fields
+      if (Object.keys(entryUpdate).length) {
+        updatedDoc = await Entry.findByIdAndUpdate(
+          id,
+          { $set: entryUpdate },
+          { new: true }
+        );
+      }
+      // Like/unlike
+      if (entryLikeUpdate) {
+        updatedDoc = await Entry.findByIdAndUpdate(id, entryLikeUpdate, {
+          new: true,
+        });
+      }
+      // Comment
+      if (entryCommentUpdate) {
+        updatedDoc = await Entry.findByIdAndUpdate(id, entryCommentUpdate, {
+          new: true,
+        });
+      }
     }
 
     if (!updatedDoc) {
-      return res.status(400).json({ success: false, message: "No valid fields to update." });
+      return res
+        .status(404)
+        .json({ success: false, message: "Entry not found" });
     }
 
     res.json({ success: true, entry: updatedDoc });
@@ -326,6 +376,5 @@ router.put("/digitalcontent/update/:id", async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 });
-
 
 module.exports = router;
