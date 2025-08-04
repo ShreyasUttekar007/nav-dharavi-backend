@@ -377,4 +377,37 @@ router.put("/digitalcontent/update/:id", async (req, res) => {
   }
 });
 
+// DELETE /digitalcontent/:id
+router.delete("/digitalcontent/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    let deleted = false;
+
+    // Try deleting from Digital model first
+    const digitalResult = await Digital.findByIdAndDelete(id);
+    if (digitalResult) {
+      deleted = true;
+    }
+
+    // If not found in Digital, try deleting from Entry model
+    if (!deleted) {
+      const entryResult = await Entry.findByIdAndDelete(id);
+      if (entryResult) {
+        deleted = true;
+      }
+    }
+
+    if (!deleted) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Entry not found." });
+    }
+
+    res.json({ success: true, message: "Entry deleted successfully." });
+  } catch (error) {
+    console.error("Delete error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;
