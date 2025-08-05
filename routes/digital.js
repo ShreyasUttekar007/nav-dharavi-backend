@@ -410,4 +410,44 @@ router.delete("/digitalcontent/:id", async (req, res) => {
   }
 });
 
+// GET metrics summary (total users, total posts, approved posts)
+router.get("/digitalcontent/metrics", async (req, res) => {
+  try {
+    // 1. Fetch all posts from both models
+    const [digitalEntries, entryDocs] = await Promise.all([
+      Digital.find().lean(),
+      Entry.find().lean(),
+    ]);
+
+    // 2. All unique phone numbers (across both models)
+    const digitalNumbers = digitalEntries.map(e => e.phoneNumber.replace(/\D/g, "").slice(-10));
+    const entryNumbers = entryDocs.map(e => e.phoneNumber.replace(/\D/g, "").slice(-10));
+    const allNumbers = new Set([...digitalNumbers, ...entryNumbers]);
+
+    // 3. Total users
+    const totalUsers = allNumbers.size;
+
+    // 4. Total posts
+    const totalPosts = digitalEntries.length + entryDocs.length;
+
+    // 5. Total approved posts
+    const approvedDigital = digitalEntries.filter(e => e.status === "Approved").length;
+    const approvedEntries = entryDocs.filter(e => e.status === "Approved").length;
+    const totalApprovedPosts = approvedDigital + approvedEntries;
+
+    res.json({
+      success: true,
+      metrics: {
+        totalUsers,
+        totalPosts,
+        totalApprovedPosts,
+      },
+    });
+  } catch (error) {
+    console.error("Metrics error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+
 module.exports = router;
